@@ -51,7 +51,9 @@ Metrics are consistent with the selected activity type:
 1. Clone the repository:
   
    git clone https://github.com/alecsus1/wearable-influx-demo.git
+   
    cd wearable-influx-demo
+   
    docker compose up -d
 
    http://localhost:8086 (to view the influxDB UI)
