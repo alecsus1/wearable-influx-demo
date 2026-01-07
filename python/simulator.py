@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from influxdb_client import InfluxDBClient, Point
 
 # ============================
-# Punto A - Setup and configuration
+# A - Setup and configuration
 # ============================
 
 INFLUXDB_URL = os.getenv("INFLUXDB_URL") 
@@ -46,7 +46,7 @@ print("Connection to InfluxDB ready!")
 print(f"URL: {INFLUXDB_URL}, Org: {INFLUXDB_ORG}, Bucket: {INFLUXDB_BUCKET}")
 
 # ============================
-# Punto B - Garmin-like data schema
+# B - Garmin-like data schema
 # ============================
 
 COMMON_TAGS = {
@@ -62,7 +62,7 @@ activity_params = {
 }
 
 # ============================
-# Punto C - Simulated data generation
+# C - Simulated data generation
 # ============================
 
 # Initial values
@@ -77,13 +77,13 @@ stress_prev = (hr - activity_params[current_activity]["hr_min"]) / (
 STEP_LENGTH = 0.78  # meters for step
 
 # ============================
-# Punto D - Simulation loop and writing to InfluxDB
+# D - Simulation loop and writing to InfluxDB
 # ============================
 
 try:
     while True:
         # --- Update HR (small random variation)
-        hr += random.choice([-1, 0, 1]) #sceglie un elemento a caso nella lista con probabilità uniforme
+        hr += random.choice([-1, 0, 1])
         hr = max(activity_params[current_activity]["hr_min"],
                  min(activity_params[current_activity]["hr_max"], hr))
 
@@ -101,7 +101,7 @@ try:
         
         # time filter with stress_prev update
         stress = 0.8 * stress_prev + 0.2 * stress_raw
-        stress_prev = stress  # aggiorno per il ciclo successivo
+        stress_prev = stress  # update for the next cycle
 
         # --- current timestamp 
         timestamp = datetime.now(timezone.utc)
@@ -138,7 +138,6 @@ try:
             .time(timestamp)
         
         #stress
-
         point_stress = Point("stress")\
             .tag("device", COMMON_TAGS["device"]) \
             .tag("user", COMMON_TAGS["user"]) \
@@ -150,12 +149,12 @@ try:
         
         write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=[point_hr, point_steps, point_calories, point_distance, point_stress])
 
-        # --- logging per debug
+        # --- logging for debug
         print(f"[{timestamp}] HR: {hr} bpm | Steps: {steps} | Calories: {calories:.2f} kcal | Distance: {distance:.2f} m | Stress: {stress:.2f}")
         print(f"hr={hr:.2f}, stress_raw={stress_raw:.2f}, stress_prev={stress_prev:.2f}, stress={stress:.2f}")
 
-        # --- attende 1 secondo
+        # --- waits 1 second
         time.sleep(1)
 
 except KeyboardInterrupt:
-    print("Simulazione interrotta dall'utente")
+    print("Simulation interrupted by user")
