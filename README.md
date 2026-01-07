@@ -50,7 +50,7 @@ Le metriche sono coerenti con il tipo di attività selezionata:
 1. Clona il repository:
    ```bash
    git clone https://github.com/alecsus1/wearable-influx-demo.git
-   cd wearable-influx
+   cd wearable-influx-demo
    docker compose up -d
 
-   http://localhost:8087 (per visualizzare UI influxDB)
+   http://localhost:8086 (per visualizzare UI influxDB)
