@@ -11,44 +11,42 @@ from datetime import datetime, timezone
 from influxdb_client import InfluxDBClient, Point
 
 # ============================
-# Punto A - Setup e configurazione
+# Punto A - Setup and configuration
 # ============================
 
-# Leggi variabili d'ambiente
-INFLUXDB_URL = os.getenv("INFLUXDB_URL") #getenv: funzione del modulo os utilizzata per leggere le variabili d'ambiente del so in modo sicuro 
+INFLUXDB_URL = os.getenv("INFLUXDB_URL") 
 INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN")
 INFLUXDB_ORG = os.getenv("INFLUXDB_ORG")
 INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET")
 ACTIVITY = os.getenv("ACTIVITY")
 
-# Verifica variabili d'ambiente
+
 missing_vars = []
-#for con unpacking su lista di tuple: la prima variabile prende il primo elemento della tupla e la 
-#seconda il secondo elemento
+
 for var_name, var_value in [
     ("INFLUXDB_URL", INFLUXDB_URL),
     ("INFLUXDB_TOKEN", INFLUXDB_TOKEN),
     ("INFLUXDB_ORG", INFLUXDB_ORG),
     ("INFLUXDB_BUCKET", INFLUXDB_BUCKET)
 ]:
-    #se la variabile non ha valori memorizza il nome della variabile vuota nell'array
+    
     if not var_value:
         missing_vars.append(var_name)
 
 if missing_vars:
-    #.join: è un metodo delle stringhe che serve a concatenare una sequenza di stringhe con un separatore(in questo caso , + spazio)
-    print(f"Errore: le seguenti variabili d'ambiente mancano: {', '.join(missing_vars)}") 
-    sys.exit(1) #interrompe lo script - 1 indica errore in unix
+   
+    print(f"Error: The following environment variables are missing: {', '.join(missing_vars)}") 
+    sys.exit(1) 
 
-# Inizializza client InfluxDB
-client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG) #oggetto che parla con ifluxdb(connessione al DB)
-write_api = client.write_api() #client.write_api(): metodo del client; write_api: oggetto specializzato per la scrittura
 
-print("✅ Connessione a InfluxDB pronta!")
+client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG) 
+write_api = client.write_api() 
+
+print("Connection to InfluxDB ready!")
 print(f"URL: {INFLUXDB_URL}, Org: {INFLUXDB_ORG}, Bucket: {INFLUXDB_BUCKET}")
 
 # ============================
-# Punto B - Schema dati Garmin-like
+# Punto B - Garmin-like data schema
 # ============================
 
 COMMON_TAGS = {
@@ -64,52 +62,50 @@ activity_params = {
 }
 
 # ============================
-# Punto C - Generazione dati simulati
+# Punto C - Simulated data generation
 # ============================
 
-# Valori iniziali
+# Initial values
 hr = random.randint(activity_params[current_activity]["hr_min"] + 5,
                     activity_params[current_activity]["hr_max"] - 5)  # bpm
 steps = 0
 calories = 0.0
-distance = 0.0  # metri
+distance = 0.0  # meters
 stress_prev = (hr - activity_params[current_activity]["hr_min"]) / (
     activity_params[current_activity]["hr_max"] - activity_params[current_activity]["hr_min"]
 ) * 100
-STEP_LENGTH = 0.78  # metri per passo
+STEP_LENGTH = 0.78  # meters for step
 
 # ============================
-# Punto D - Loop di simulazione e scrittura su InfluxDB
+# Punto D - Simulation loop and writing to InfluxDB
 # ============================
 
 try:
     while True:
-        # --- aggiorna HR (piccola variazione casuale)
+        # --- Update HR (small random variation)
         hr += random.choice([-1, 0, 1]) #sceglie un elemento a caso nella lista con probabilità uniforme
         hr = max(activity_params[current_activity]["hr_min"],
                  min(activity_params[current_activity]["hr_max"], hr))
 
-        # --- aggiorna passi e calorie
+        # --- Update steps and calories
         steps += random.randint(1, 3)
         calories += 0.05 * (steps / 2)
         distance += steps * STEP_LENGTH
 
-        # --- calcola stress in base ad HR
+        # --- calculate stress based on HR
         base_stress = (hr - activity_params[current_activity]["hr_min"]) / (
             activity_params[current_activity]["hr_max"] - activity_params[current_activity]["hr_min"]
         ) * 100
         stress_raw = base_stress + random.uniform(-5, 5)
         stress_raw = max(0, min(100, stress_raw))
         
-        # filtro temporale con aggiornamento stress_prev
+        # time filter with stress_prev update
         stress = 0.8 * stress_prev + 0.2 * stress_raw
         stress_prev = stress  # aggiorno per il ciclo successivo
 
-        # --- timestamp corrente
+        # --- current timestamp 
         timestamp = datetime.now(timezone.utc)
-        # --- crea point heart_rate
-        #Point: classe di influxdb-client, serve a costruire un singolo record
-        # / in python consente di spezzare una riga lunga e rende il codice leggibile
+        #heart_rate
         point_hr = Point("heart_rate") \
             .tag("device", COMMON_TAGS["device"]) \
             .tag("user", COMMON_TAGS["user"]) \
@@ -117,7 +113,7 @@ try:
             .field("bpm", hr) \
             .time(timestamp)
 
-        # --- crea point steps
+        #steps
         point_steps = Point("steps") \
             .tag("device", COMMON_TAGS["device"]) \
             .tag("user", COMMON_TAGS["user"]) \
@@ -125,7 +121,7 @@ try:
             .field("steps_cumulative", steps) \
             .time(timestamp)
 
-        # --- crea point calories
+        #calories
         point_calories = Point("calories") \
             .tag("device", COMMON_TAGS["device"]) \
             .tag("user", COMMON_TAGS["user"]) \
@@ -133,7 +129,7 @@ try:
             .field("kcal", round(calories, 2)) \
             .time(timestamp)
 
-        # --- crea point distance
+        #distance
         point_distance = Point("distance") \
             .tag("device", COMMON_TAGS["device"]) \
             .tag("user", COMMON_TAGS["user"]) \
@@ -141,7 +137,7 @@ try:
             .field("meters", round(distance, 2)) \
             .time(timestamp)
         
-        #crea point stress
+        #stress
 
         point_stress = Point("stress")\
             .tag("device", COMMON_TAGS["device"]) \
@@ -150,9 +146,8 @@ try:
             .field("level_float", stress)\
             .time(timestamp)
 
-        # --- invia tutti i point a InfluxDB
-        # .write: è il metodo che prende i point; liconverte nel formato influxdb (line protocol); li manda via HTTP al server
-        # org=.... influxdb verifica che il token sia valido e che il token sia autorizzato per questa org e bucket
+ 
+        
         write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=[point_hr, point_steps, point_calories, point_distance, point_stress])
 
         # --- logging per debug
